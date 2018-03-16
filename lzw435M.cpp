@@ -31,7 +31,7 @@ Iterator compress(const std::string &uncompressed, Iterator result) {
     else {
       *result++ = dictionary[w];
       // Add wc to the dictionary. Assuming the size is 4096!!!
-      if (dictionary.size()<4096)
+      if (dictionary.size()<65536)
          dictionary[wc] = dictSize++;
       w = std::string(1, c);
     }
@@ -69,7 +69,7 @@ std::string decompress(Iterator begin, Iterator end) {
     result += entry;
  
     // Add w+entry[0] to the dictionary.
-    if (dictionary.size()<4096)
+    if (dictionary.size()<65536)
       dictionary[dictSize++] = w + entry[0];
  
     w = entry;
@@ -124,7 +124,7 @@ int main(int argc, char *argv[] ) {
 		std::cerr<<"Error: Not Enough arguments passed in \n";
 		return 1;
 	}
-
+	//Input File IO 
 	std::string inFileName = argv[2];
 	std::ifstream inFile(inFileName.c_str(), std::ios::binary);
 	std::string input((std::istreambuf_iterator<char>(inFile)),std::istreambuf_iterator<char>());
@@ -135,73 +135,132 @@ int main(int argc, char *argv[] ) {
 		switch(*argv[1]){
 			
 			case 'c': {
+				std::cout<<"Compressing.... \n";
+				//Vector we are writing into from the input
 				std::vector<int> writeOutVector;
 				compress(input,std::back_inserter(writeOutVector));
-				std::cout<<"Size of vector for bible.txt : "<<writeOutVector.size()<<"\n";
-				//copy(writeOutVector.begin(), writeOutVector.end(), std::ostream_iterator<int>(std::cout, ","));
-				std::cout << std::endl;
-				
-				//Taking the vector and coverting each element into binary
-				std::string out;
-				for(int i =0; i < writeOutVector.size(); i++){
+				//Original bits needed as well as num of elems
+				int b = 9; 
+				int num = 256;
+				std::string compStr;
+				std::string temp;
+				for(std::vector<int>::iterator iter = writeOutVector.begin(); iter != writeOutVector.end();iter++){
+					//Handle Original ASCII Table and up to 512, then grabs number of bits based on the size 
+					temp = int2BinaryString(*iter, b);
+					num++;
 
-					out.append(int2BinaryString(writeOutVector[i],12));
+				switch(num){
+					case 512: 
+						b =10;
+						break;
+					case 1024:
+						b = 11;
+						break;
+					case 2048:
+						b = 12;
+						break; 
+					case 4096:
+						b =13;
+						break;
+					case 8192:
+						b =14;
+						break;
+					case 16384:
+						b = 15;
+						break;
+					case 32768:
+						b = 16;
+						break;
+
 				}
-		
-		
-				int bitLen = out.length() % 8;
-				out.append(bitLen, '0');
 
-				assert(out.length() == (out.length() % 8 + out.length()));
+					compStr+=temp;
+				}
+
+	
+			//bin2IntString
+			int remainder = compStr.length() % 8;
+			compStr.append( 8 -remainder, '0');
+			std::string str2; 
 			
+			for(int i =0; i< compStr.size(); i++){
 
-				std::string segment;
-				//int newChar;
-				//std::string out2 = out;
-				for(int i = 0; i<out.size(); i++){
-		
-					segment = out.substr(i,8);
-					//int newChar;
-					out.replace(i,8,1,(char)binaryString2Int(segment));
-				}
-			 
+			str2 = compStr.substr(i,8);
+			compStr.replace(i,8,1,(char)binaryString2Int(str2));
+			
+			}
+
+				//File output			 
 				inFileName.append(".lzw");
 				std::ofstream outFile(inFileName.c_str(),std::ios::binary);
-				outFile<<out;
+				outFile<<compStr;
 				outFile.close();	
+				std::cout<<"Done! \n";
 				break;
 			}
 			case 'e': {
-				
-				std::string s; 
-				for(int i = 0; i<input.length(); i++){
-					//std::bitset<8>b(static_cast<int>(input.at(i)));
-					std::bitset<8> bits((int)(input[i]));
-					s.append(bits.to_string());
-				}
-				std::cout<<"Input length: " << input.length()<<"\n";
-				std::cout<<"S : "<< s.size()<< "\n";
-				int test =0;
-				input = s;
-				std::vector<int> vec;
-				int zeros = 4;
-				//assert((input.length() - zeros) % 12 == 0);
-				for( int i = 0;i< input.size() - zeros; i+=12){
-					std::string strin = input.substr(i,12);
-					//std::cout<<strin<<"\n";
-					assert(strin.length() == 12);
-					vec.push_back(binaryString2Int(strin));
-					//std::cout<<test<<"\n";
-					//test++;
-				}
+				std::cout<<"Expanding.... \n";
+				//Original bit size as well as num of elems in table					
+				int b = 9;
+				int num = 256;
+
+				std::string str;
+				std::vector<int> writeOutVector;
+
+				//Binary string and string to binary string
+				std::string BinString;
+				std::string s2BinString;
 			
-				std::string d = decompress(vec.begin(), vec.end());
+				//Bits to string 
+				for(int i = 0; i<input.length(); i++){
+				
+					std::bitset<8> bits((int)(input[i]));
+					s2BinString.append(bits.to_string());
+				}
+
+
+				BinString = s2BinString;
+				
+				for(int i = 0; i<BinString.length(); i++){
+
+					str+= BinString[i];
+					if(str.length() >= b){
+						writeOutVector.push_back(binaryString2Int(str));
+						num++;
+						
+						switch(num){
+							case 512:
+								b = 10;
+								break;
+							case 1024:
+								b = 11;	
+								break;
+							case 2048: 
+								b = 12;
+								break;
+							case 4096:
+								b = 13;
+								break;
+							case 8192:
+								b = 14;
+								break; 
+							case 16384: 
+								b = 15;
+								break;
+							case 32768:
+								b =16;
+								break; 		
+						}
+					str.clear();
+					}
+				}
+				//Output IO	
+				std::string d = decompress(writeOutVector.begin(),writeOutVector.end());
 				inFileName.append("2");
 				std::ofstream out(inFileName.c_str(), std::ios::binary);
 				out<<d;
-				out.close();
-				
-
+				out.close();	
+				std::cout<<"Done! \n";
 				break;
 
 			}

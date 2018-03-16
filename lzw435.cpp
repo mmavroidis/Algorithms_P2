@@ -124,7 +124,7 @@ int main(int argc, char *argv[] ) {
 		std::cerr<<"Error: Not Enough arguments passed in \n";
 		return 1;
 	}
-
+	//Input File IO
 	std::string inFileName = argv[2];
 	std::ifstream inFile(inFileName.c_str(), std::ios::binary);
 	std::string input((std::istreambuf_iterator<char>(inFile)),std::istreambuf_iterator<char>());
@@ -135,11 +135,10 @@ int main(int argc, char *argv[] ) {
 		switch(*argv[1]){
 			
 			case 'c': {
+				std::cout<<" Compressing.... \n";
+				//Vector that is  going to hold all the ascii
 				std::vector<int> writeOutVector;
 				compress(input,std::back_inserter(writeOutVector));
-				std::cout<<"Size of vector for bible.txt : "<<writeOutVector.size()<<"\n";
-				//copy(writeOutVector.begin(), writeOutVector.end(), std::ostream_iterator<int>(std::cout, ","));
-				std::cout << std::endl;
 				
 				//Taking the vector and coverting each element into binary
 				std::string out;
@@ -148,60 +147,56 @@ int main(int argc, char *argv[] ) {
 					out.append(int2BinaryString(writeOutVector[i],12));
 				}
 		
-		
+				//creating string that is multiple of 8
 				int bitLen = out.length() % 8;
 				out.append(bitLen, '0');
 
 				assert(out.length() == (out.length() % 8 + out.length()));
 			
-
+				//Segments to be written out to output file
 				std::string segment;
-				//int newChar;
-				//std::string out2 = out;
 				for(int i = 0; i<out.size(); i++){
 		
 					segment = out.substr(i,8);
 					//int newChar;
 					out.replace(i,8,1,(char)binaryString2Int(segment));
 				}
-			 
+			 	//Output file write out
 				inFileName.append(".lzw");
 				std::ofstream outFile(inFileName.c_str(),std::ios::binary);
 				outFile<<out;
 				outFile.close();	
+				std::cout<<"Done! \n";
 				break;
 			}
 			case 'e': {
-				
+				std::cout<<"Expanding.... \n";
+				//Reading in each byte 	
 				std::string s; 
 				for(int i = 0; i<input.length(); i++){
 					//std::bitset<8>b(static_cast<int>(input.at(i)));
 					std::bitset<8> bits((int)(input[i]));
 					s.append(bits.to_string());
 				}
-				std::cout<<"Input length: " << input.length()<<"\n";
-				std::cout<<"S : "<< s.size()<< "\n";
-				int test =0;
+			
 				input = s;
 				std::vector<int> vec;
 				int zeros = 4;
-				//assert((input.length() - zeros) % 12 == 0);
+			
 				for( int i = 0;i< input.size() - zeros; i+=12){
+
 					std::string strin = input.substr(i,12);
-					//std::cout<<strin<<"\n";
 					assert(strin.length() == 12);
 					vec.push_back(binaryString2Int(strin));
-					//std::cout<<test<<"\n";
-					//test++;
+
 				}
-			
+				//Decompression of each element of vector 			
 				std::string d = decompress(vec.begin(), vec.end());
 				inFileName.append("2");
 				std::ofstream out(inFileName.c_str(), std::ios::binary);
 				out<<d;
 				out.close();
-				
-
+				std::cout<<"Done! \n";
 				break;
 
 			}
